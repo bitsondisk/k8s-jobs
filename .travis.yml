@@ -1,0 +1,40 @@
+language: python
+python:
+- 3.6.3
+install:
+- pip install -r test-requirements.txt
+before_script:
+- python -m flake8
+script:
+- python -m pytest --cov=./k8s_jobs tests/
+after_success:
+- codecov
+branches:
+  only:
+  - master
+  - "/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-(0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?/"
+before_deploy:
+- python setup.py sdist
+- git clone --depth 1 git@github.com:freenome/freenome-build.git || true
+- source freenome-build/scripts/install_latest_stable_freenome_build.sh $ANACONDA_TOKEN
+- conda install cython --yes
+deploy:
+- provider: packagecloud
+  repository: python
+  username: freenome
+  on:
+    tags: true
+  dist: python
+  package_glob: dist/*.{whl,zip,egg,egg-info,tar,bz2,Z,gz}
+  skip_cleanup: true
+  token:
+    secure: e2zgT8jvqe0fKUC684qeZA7Td1ocwPmRcACJwU7PbOQmA3V9rHNRhIRdYfBZ0+6xKaj/LH/et5GvO/ulW+01KGFwc/2u19Xa+95pkPQuwOye42ZgF20TUbk9yrKC2aTleCCW7ZP/xShvZX2dtBPktR8cbhp8Ui2Bl+UXRoSx4mFZMiEmAv1fybTY+gSjMyj8G1h4cNZmI2pEhTnePUO8+TAgJIyBwjHRuFwrlkJX+EX1oUutYjdwqGiQBT+LzbLXpYrwDedbsfqtsySxzi0pHPD6yX6R2XYjpOlOSzURiqL9G3RYqdRRIqkC206CoNB4Gdz1HRrRWCJAo1kyZZrpxiG0RPCZnXX7OSQjy1XCkt/0Lsw+xTlco4QESUxKdgM43Wkd5vjX7/ovO5HxCGJO+NzyB63nWvhlv9O247MO5MOgYifjv0Q31vHmzAg2GXeyNHSy2xVT1EG64EQgojFd3cSojSq/qoD0/c0VmPYZCRiWKO3832e6qfNGs5/kvcOI3e+CHWnR80KpfMaUQjeqGgQ8M9VnpeWR+MmRNPo9MPQLecIvki4KQTmKteOkm21jhGY5lUOsFhItAbNjBafWPe2LJ6lEamNXugg+nCzIXDBYSESVSvvTKnF9Kcixj51pWieGfPIy4N53hBt9pMz/HqyHmbIamjBoqeiOPWCxxj8=
+- provider: script
+  script: freenome-build deploy -u
+  skip_cleanup: true
+  on:
+    tags: true
+env:
+  global:
+  - secure: vmVXysTW+1qBlc/EDC2YxVM2B4r7vQGPFn8okD+3IrpbsjuchuKFUdFPKhSusIcL5AgLVVB+rgzG3prVP6636hI514bnksTZvJPo6YEhSLKkSlRAOqgiUxaAeEIpp391TaPwojPFByjHsHCr29/MAQNMxQEWGu22AERiv0QCt20wc9/q2WFSDuWX0PbfTDJnf1lfEV13+IvryXzB5DSm/In78eYv9gQcO2GOxshTD6WR5CtC6SR7oQptrNQSuDu9M8j+ZxK+OR6Nvk1hQpVaTK/eepguMmBxlhAvqEWCgSafm5phBkMKrVxqMMxSuy4o3GNFCKk230wZYsgtGjh8T5S3VTAXcBrMCm/IpTubs7lYHJwU+/F+hrbHDZ/q+V/bc1rb4ENzETlTJuMUkgdFZQ293vCW/ud1SGSxcJg2vYKdmaT4kmy1RdANeSm7VfX/2OCzcRAjh6DdjtFn+9Sng1UV67q2WIurY46fJ3S/fGloukpWBqcFL0H68XpFz5ti0VoShpjfz1z8gmLsN+TaWrfzdYkQdL8+uhQZhQCbAqn5E0c5aXJc4ZsjCJzNyYD+tHkEKhbJCPwaTQiO+xx8RgdQN/HYWZrVzSSQDnLapVoSM/fy0chfQ73k25Fi8oKzeI+IHK/no6H1is4nb5eDuoQjNQLuX4fmkzdtagOtCug=
+  - secure: mnWzdj0N/ihmcJV6B9amcFwjlQwCMqab1DDqDVLqxsUh457PsApETKBQX7hkF3exL297HeCU2LvoTDgKyumNXiI72UjOOGtFGNPnrpjf84MN8iBr4MDvrtKXmtbFOzuctS55S8UX0OofUVhVewb/ipsJH2162AOGNvJ8rFxRnorn0sZepew3ehWgYR5/owVbAMXSQfzbL5BYnXKxszf7mef77yU01YhViw0EjYGo10Zgu3RnF3XQ2+U1iRt3qvyGD2kPANyR3bboW03IMj7QKvQoNxHeHzhWoy3kceDSTVSnTewc1Pb2Rc23MMbhkihxO7vbxDSDWkpND3Fku65inHlQBCF3C/pZqYdx58tm7uSysUld4IjlkH3nXXQ+NHLF9ARb2YRbVUEFIGiqfnIGfKk9VG/cMx7phbuZddId5ZBfPI+/UURTmQCuDhSBAGa4tHjsOsq+I7t0JtK3YQ6X3aZyARw7WX6jlnXTsQuedArYwCd5q3c8SEfxDIo83akGXy2GV0EvdH1Eoy7ij2B+pZownJYymzZD4qc3crzxwDlft9AVFsDqoBDklG0UAebJSdorB2TbCMSBUYjIXAQ6Q6QgKoMRq08mBozG1Mp62v2jKuufZZ8hKIRSzQhRkhPoumU+Njv1ZswvdAkq0RM0h/PEiif4zu3tpshyRJ2SnVw=
