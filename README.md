@@ -3,7 +3,8 @@ This is a set of scripts for starting kubernetes jobs and interactive shells, gi
 on the command line.
 
 ## kbatch
-```usage: kbatch [-h] [--file FILE] [--image IMAGE]
+```
+usage: kbatch [-h] [--file FILE] [--image IMAGE]
               [--container-name CONTAINER_NAME] [--name NAME] [--cpu CPU]
               [--memory MEMORY] [--disk DISK] [--cpu-limit CPU_LIMIT]
               [--memory-limit MEMORY_LIMIT] [--disk-limit DISK_LIMIT]
@@ -61,7 +62,8 @@ Note that this command can also be used to delete old information for completed 
 
 
 ## krun
-```usage: krun [-h] --image IMAGE [--name NAME] [--env ENV]
+```
+usage: krun [-h] --image IMAGE [--name NAME] [--env ENV]
             [cmd [args...]]
 
 positional arguments:

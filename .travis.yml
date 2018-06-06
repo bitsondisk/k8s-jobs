@@ -17,7 +17,6 @@ before_deploy:
 - python setup.py sdist
 - git clone --depth 1 git@github.com:freenome/freenome-build.git || true
 - source freenome-build/scripts/install_latest_stable_freenome_build.sh $ANACONDA_TOKEN
-- conda install cython --yes
 deploy:
 - provider: packagecloud
   repository: python
