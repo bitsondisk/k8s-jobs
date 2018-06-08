@@ -1,4 +1,6 @@
 # Kubernetes Job System
+[![Build Status](https://travis-ci.com/freenome/k8s-jobs.svg?token=qCtry4yPNxqPJJfHHJDV&branch=master)](https://travis-ci.com/freenome/k8s-jobs)
+
 This is a set of scripts for starting kubernetes jobs and interactive shells, given the necessary options
 on the command line.
 
