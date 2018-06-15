@@ -1,0 +1,7 @@
+#!/bin/bash
+
+JOB_NAME=$1
+POD=$(kubectl get pod -o json | jq -r ".items | map({\"job_name\": .metadata.labels[\"job-name\"], \"pod_name\": .metadata.name}) | map(select(.job_name==\"$JOB_NAME\")) | map(.pod_name) | first")
+
+shift
+kubectl logs $POD $@

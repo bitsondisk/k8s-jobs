@@ -9,7 +9,7 @@ from k8s_jobs.klib import generate_templated_yaml
 def run_k8s_batch_job(args):
     temp_yaml = generate_templated_yaml(args)
 
-    subprocess.run([f'kubectl create -f {temp_yaml.name}'], shell=True)
+    subprocess.run([f"kubectl create -f {temp_yaml.name} | sed 's/.*\"\\(.*\\)\".*/\\1/g'"], shell=True)
 
 
 def main():
