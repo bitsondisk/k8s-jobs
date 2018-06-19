@@ -37,6 +37,14 @@ optional arguments:
   --disk-limit DISK_LIMIT
                         Disk limit (In bytes: 1024, 1e6, 100M, 128Mi)
   --time TIME           Time limit (seconds)
+  --persistent-disk-name PERSISTENT_DISK_NAME
+                        Persistent disk name (required to use a
+                        gcePersistentDisk)
+  --volume-name VOLUME_NAME
+                        Persistent disk volume name (optional)
+  --mount-path MOUNT_PATH
+                        Mount path for the persistent disk (optional, default
+                        is /static)
   --preemptible, -p     Allow scheduling on preemptible nodes
 ```
 
@@ -45,6 +53,17 @@ and returns the job id. It will fill in the appropriate fields for the command a
 memory/cpu/disk reservation and/or limits, if given. Note that whether a job name is specified or not an
 auto-generated name is used (in Kubernetes) so that a job configuration can be started more than once for
 different instances.
+
+Example job command line to calculate pi using perl:
+
+`kbatch -n kbatch-test-pi -i perl --time 100 -- perl -Mbignum=bpi -wle "print bpi(2000)"`
+
+This example job has the name of `kbatch-test-pi`, uses the image `perl`, has a maximum execution time of 100 seconds,
+and runs the command `perl -Mbignum=bpi -wle "print bpi(2000)"` inside the container.
+
+Note that in order to use preemptible nodes with node taints, you should create a kubernetes node pool with the taint
+of `gke-preemptible` as the key, `true` as the value, and `NoSchedule` as the effect. This will prevent jobs that are
+not specified as preemptible from being scheduled on the preemptible nodes.
 
 ## klist
 `usage: klist`

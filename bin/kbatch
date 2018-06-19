@@ -35,6 +35,10 @@ def main():
     parser.add_argument('--disk-limit', help='Disk limit (In bytes: 1024, 1e6, 100M, 128Mi)')
     parser.add_argument('--time', help='Time limit (seconds)')
 
+    parser.add_argument('--persistent-disk-name', help='Persistent disk name (required to use a gcePersistentDisk)')
+    parser.add_argument('--volume-name', help='Persistent disk volume name (optional)')
+    parser.add_argument('--mount-path', help='Mount path for the persistent disk (optional, default is /static)')
+
     parser.add_argument('--preemptible', '-p', help='Allow scheduling on preemptible nodes', action='store_true')
 
     parser.add_argument('cmd_args', metavar='cmd [args...]', nargs='*',

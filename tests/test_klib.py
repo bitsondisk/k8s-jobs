@@ -17,7 +17,10 @@ def test_generate_yaml():
                            disk=None,
                            cpu_limit=None,
                            memory_limit=None,
-                           disk_limit=None)
+                           disk_limit=None,
+                           persistent_disk_name=None,
+                           mount_path=None,
+                           volume_name=None)
 
     temp_yaml = klib.generate_templated_yaml(args)
 
@@ -29,7 +32,7 @@ def test_generate_yaml():
 
     # Test preemtible sections
     assert 'tolerations:' in data
-    assert 'cloud.google.com/gke-preemptible' in data
+    assert 'gke-preemptible' in data
 
     # Test command and image
     assert 'command: ["ls", "-la"]' in data
@@ -40,6 +43,7 @@ def test_generate_yaml():
     args.preemptible = None
     args.name = 'job-name'
     args.image = 'basic'
+    args.persistent_disk_name = 'test-disk'
 
     temp_yaml2 = klib.generate_templated_yaml(args)
 
@@ -51,7 +55,7 @@ def test_generate_yaml():
 
     # Test preemtible sections not in the file
     assert 'tolerations:' not in data
-    assert 'cloud.google.com/gke-preemptible' not in data
+    assert 'gke-preemptible' not in data
 
     # Test command and image
     assert 'command: ["ls", "-la"]' in data
@@ -60,6 +64,39 @@ def test_generate_yaml():
 
     # Test job name
     assert 'generateName: job-name-' in data
+
+    # Test volume mounts
+    assert 'mountPath: /static' in data
+    assert 'name: k8s-job-volume' in data
+    assert 'pdName: test-disk' in data
+
+    args.mount_path = '/test'
+    args.volume_name = 'test-volume-name'
+
+    temp_yaml3 = klib.generate_templated_yaml(args)
+
+    with open(temp_yaml3.name) as f:
+        data = f.read()
+
+    # Test not using the test file
+    assert 'testValue: Yep' not in data
+
+    # Test preemtible sections not in the file
+    assert 'tolerations:' not in data
+    assert 'gke-preemptible' not in data
+
+    # Test command and image
+    assert 'command: ["ls", "-la"]' in data
+    assert 'name: basic' in data
+    assert 'image: basic' in data
+
+    # Test job name
+    assert 'generateName: job-name-' in data
+
+    # Test volume mounts
+    assert 'mountPath: /test' in data
+    assert 'name: test-volume-name' in data
+    assert 'pdName: test-disk' in data
 
     args.image = None
 

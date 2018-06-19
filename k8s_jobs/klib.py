@@ -18,14 +18,32 @@ arg_templates = {
     'cpu_limit': 'CPU_LIMIT',
     'memory_limit': 'MEM_LIMIT',
     'disk_limit': 'DISK_LIMIT',
+    'persistent_disk_name': 'PD_NAME',
+    'mount_path': 'MOUNT_PATH',
+    'volume_name': 'VOLUME_NAME'
 }
 
 yaml_tolerate_preemptible = '''
       tolerations:
-      - key: cloud.google.com/gke-preemptible
+      - key: gke-preemptible
         operator: Equal
         value: "true"
         effect: NoSchedule
+'''
+
+yaml_disk_mount_containers = '''
+        volumeMounts:
+          - mountPath: $(MOUNT_PATH)
+            name: $(VOLUME_NAME)
+            readOnly: true
+'''
+
+yaml_disk_mount_spec = '''
+      volumes:
+        - name: $(VOLUME_NAME)
+          gcePersistentDisk:
+            pdName: $(PD_NAME)
+            fsType: ext4
 '''
 
 
@@ -49,6 +67,12 @@ def convert_template_yaml(data, args):
 
     if not template_values['JOB_NAME']:
         template_values['JOB_NAME'] = 'kjob'
+
+    if not template_values['MOUNT_PATH']:
+        template_values['MOUNT_PATH'] = '/static'
+
+    if not template_values['VOLUME_NAME']:
+        template_values['VOLUME_NAME'] = 'k8s-job-volume'
 
     # Auto-set the container name if none is given
     if not template_values['CONTAINER_NAME']:
@@ -75,16 +99,23 @@ def generate_templated_yaml(args):
         with open(args.file) as f:
             data = f.read()
 
-        data = convert_template_yaml(data, args)
     else:
         if not args.image:
             raise RuntimeError('A pre-defined yaml file or docker image must be specified!')
 
-        data = convert_template_yaml(pkgutil.get_data("k8s_jobs.klib", "default.yaml").decode('utf-8'), args)
+        data = pkgutil.get_data("k8s_jobs.klib", "default.yaml").decode('utf-8')
+
+    if args.persistent_disk_name:
+        # Remove the extra newline in the file
+        data = data[:-1] + yaml_disk_mount_containers
 
     if args.preemptible:
-        # Remove the extra newline in the file
         data = data[:-1] + yaml_tolerate_preemptible
+
+    if args.persistent_disk_name:
+        data = data[:-1] + yaml_disk_mount_spec
+
+    data = convert_template_yaml(data, args)
 
     temp_yaml = tempfile.NamedTemporaryFile()
 

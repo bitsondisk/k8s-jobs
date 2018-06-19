@@ -6,6 +6,7 @@ spec:
   activeDeadlineSeconds: $(TIME_LIMIT_SECONDS)
   template:
     spec:
+      restartPolicy: Never
       containers:
       - name: $(CONTAINER_NAME)
         image: $(CONTAINER_IMAGE)
@@ -19,4 +20,3 @@ spec:
             cpu: $(CPU_LIMIT)
             memory: $(MEM_LIMIT)
             ephemeral-storage: $(DISK_LIMIT)
-      restartPolicy: Never

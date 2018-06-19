@@ -19,6 +19,6 @@ setup(name='k8s-jobs',
       author_email='david.tulga@freenome.com',
       description='Kubernetes job management scripts',
       py_modules=['k8s_jobs'],
-      scripts=['bin/kbatch', 'bin/kcancel', 'bin/klist', 'bin/krun', 'bin/kstatus'],
+      scripts=['bin/kbatch', 'bin/kcancel', 'bin/klist', 'bin/krun', 'bin/kstatus', 'bin/klogs'],
       package_data={'k8s_jobs': ['*.yaml']},
       packages=find_packages())
