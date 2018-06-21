@@ -81,6 +81,12 @@ This command lists detailed information for a given job. See: `kubectl describe 
 This command will cancel one or more running jobs. See: `kubectl delete` for advanced options.
 Note that this command can also be used to delete old information for completed jobs.
 
+## klogs
+`usage: klogs job-id [additional log options such as -f for tailing the logs]
+
+This command will find one of the pods a job is running on and run `kubectl logs <POD> <EXTRA_ARGS>` on that pod,
+appending any arguments passed to klogs
+
 
 ## krun
 ```
