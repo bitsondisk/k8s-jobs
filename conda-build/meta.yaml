@@ -1,0 +1,18 @@
+package:
+  name: k8s-jobs
+  version: {{ VERSION }}
+
+source:
+  path: ..
+
+build:
+  script: python setup.py install --single-version-externally-managed --record=record.txt
+
+requirements:
+  build:
+    - setuptools
+
+  run:
+    # required for test
+    - freenome-build >=1.0.32
+    - jq
