@@ -63,7 +63,7 @@ def convert_template_yaml(data, args):
 
     # Ensure that the command and args are in the format ["command", "arg1", "arg2", ...]
     if template_values['CMD_ARGS']:
-        template_values['CMD_ARGS'] = json.dumps(template_values['CMD_ARGS'])
+        template_values['CMD_ARGS'] = ' '.join(template_values['CMD_ARGS'])
 
     if not template_values['JOB_NAME']:
         template_values['JOB_NAME'] = 'kjob'
@@ -83,6 +83,7 @@ def convert_template_yaml(data, args):
                 container_name = image_path[slash_pos + 1:]
             else:
                 container_name = image_path
+            container_name = container_name.replace(':', '-')
 
             template_values['CONTAINER_NAME'] = container_name
         else:
