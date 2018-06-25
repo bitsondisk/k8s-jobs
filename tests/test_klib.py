@@ -35,7 +35,7 @@ def test_generate_yaml():
     assert 'gke-preemptible' in data
 
     # Test command and image
-    assert 'command: ["ls", "-la"]' in data
+    assert 'command: ls -la' in data
     assert 'name: the-ship' in data
     assert 'image: syncing/the-ship' in data
 
@@ -58,7 +58,7 @@ def test_generate_yaml():
     assert 'gke-preemptible' not in data
 
     # Test command and image
-    assert 'command: ["ls", "-la"]' in data
+    assert 'command: ls -la' in data
     assert 'name: basic' in data
     assert 'image: basic' in data
 
@@ -86,7 +86,7 @@ def test_generate_yaml():
     assert 'gke-preemptible' not in data
 
     # Test command and image
-    assert 'command: ["ls", "-la"]' in data
+    assert 'command: ls -la' in data
     assert 'name: basic' in data
     assert 'image: basic' in data
 
