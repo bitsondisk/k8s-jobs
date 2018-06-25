@@ -1,8 +1,10 @@
+import json
 import os
 import random
 import string
 import tempfile
 import pkgutil
+import yaml
 
 
 arg_templates = {
@@ -56,13 +58,33 @@ def replace_template(lines, key, value):
 
 
 def convert_template_yaml(data, args):
-    lines = data.split('\n')
-
     template_values = {template: getattr(args, attr) for attr, template in arg_templates.items()}
 
     # Ensure that the command and args are in the format ["command", "arg1", "arg2", ...]
-    if template_values['CMD_ARGS']:
-        template_values['CMD_ARGS'] = ' '.join(template_values['CMD_ARGS'])
+    cmd_args = template_values['CMD_ARGS']
+    if cmd_args:
+        config_template = yaml.load(data)
+        containers_config = config_template.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
+        for i, container_config in enumerate(containers_config):
+            command = container_config['command']
+            if isinstance(command, list):
+                new_command = []
+                for command_segment in command:
+                    if command_segment == '$(CMD_ARGS)':
+                        new_command += cmd_args
+                    elif '$(CMD_ARGS)' in command_segment:
+                        new_command.append(command_segment.replace('$(CMD_ARGS)', ' '.join(cmd_args)))
+                    else:
+                        new_command.append(command_segment)
+
+                cmd_args_name = f'CMD_ARGS{i}'
+                config_template['spec']['template']['spec']['containers'][i]['command'] = f'$({cmd_args_name})'
+                template_values[cmd_args_name] = json.dumps(new_command)
+
+        template_values['CMD_ARGS'] = json.dumps(cmd_args)
+
+    data = yaml.dump(config_template)
+    lines = data.split('\n')
 
     if not template_values['JOB_NAME']:
         template_values['JOB_NAME'] = 'kjob'
@@ -82,7 +104,6 @@ def convert_template_yaml(data, args):
                 container_name = image_path[slash_pos + 1:]
             else:
                 container_name = image_path
-            container_name = container_name.replace(':', '-')
 
             template_values['CONTAINER_NAME'] = container_name
         else:
