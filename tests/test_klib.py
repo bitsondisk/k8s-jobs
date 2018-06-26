@@ -4,8 +4,13 @@ from types import SimpleNamespace
 from k8s_jobs import klib
 
 
-def test_generate_yaml():
-    args = SimpleNamespace(file='tests/test.yaml',
+@pytest.mark.parametrize('test_template, expected_cmd', [
+    ('tests/templates/default_cmd.yaml', 'command: ["ls", "-la"]'),
+    ('tests/templates/interpolated_cmd.yaml', 'command: ["/bin/sh", "-c", "date; ls -la"]'),
+    ('tests/templates/array_continuation_cmd.yaml', 'command: ["date;", "ls", "-la"]'),
+])
+def test_generate_yaml(test_template, expected_cmd):
+    args = SimpleNamespace(file=test_template,
                            cmd_args=['ls', '-la'],
                            image='syncing/the-ship',
                            preemptible=True,
@@ -35,7 +40,7 @@ def test_generate_yaml():
     assert 'gke-preemptible' in data
 
     # Test command and image
-    assert 'command: ["ls", "-la"]' in data
+    assert expected_cmd in data
     assert 'name: the-ship' in data
     assert 'image: syncing/the-ship' in data
 
