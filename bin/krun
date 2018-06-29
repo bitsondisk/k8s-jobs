@@ -3,22 +3,28 @@
 import argparse
 import subprocess
 
-from k8s_jobs.klib import random_string
+from k8s_jobs.klib import combine_script_and_args, random_string
 
 
 def run_k8s_interactive(args):
-    job_name = args.name if args.name else f'krun-{random_string(8)}'
+    combine_script_and_args(args)
+    job_name = args.name if args.name else 'krun-{random_str}'.format(random_str=random_string(8))
 
     cmd_args = ' '.join(args.cmd_args) if args.cmd_args else 'bash'
 
     env = ''
     if args.env:
-        env = ' '.join([f'--env="{e}"' for e in args.env])
+        env = ' '.join(['--env="{e}"'.format(e=e) for e in args.env])
 
     image = args.image
 
-    subprocess.run([f'kubectl run -i --tty --rm "{job_name}" --image="{image}" --restart=Never {env} '
-                    f'-- {cmd_args}'], shell=True)
+    subprocess.check_call(['kubectl run -i --tty --rm "{job_name}" --image="{image}" --restart=Never {env} '
+                          '-- {cmd_args}'.format(
+                              job_name=job_name,
+                              image=image,
+                              env=env,
+                              cmd_args=cmd_args,
+                          )], shell=True)
 
 
 def main():

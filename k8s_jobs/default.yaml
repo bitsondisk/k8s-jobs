@@ -10,7 +10,10 @@ spec:
       containers:
       - name: $(CONTAINER_NAME)
         image: $(CONTAINER_IMAGE)
-        command: $(CMD_ARGS)
+        command:
+        - /bin/sh
+        - -c
+        - $(CMD_ARGS)
         resources:
           requests:
             cpu: $(CPU_REQUEST)

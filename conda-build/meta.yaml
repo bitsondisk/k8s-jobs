@@ -11,8 +11,8 @@ build:
 requirements:
   build:
     - setuptools
-
   run:
     # required for test
     - freenome-build >=1.0.32
     - jq
+    - pyyaml

@@ -1,6 +1,8 @@
+import base64
 import json
 import os
 import random
+import re
 import string
 import tempfile
 import pkgutil
@@ -21,7 +23,7 @@ arg_templates = {
     'disk_limit': 'DISK_LIMIT',
     'persistent_disk_name': 'PD_NAME',
     'mount_path': 'MOUNT_PATH',
-    'volume_name': 'VOLUME_NAME'
+    'volume_name': 'VOLUME_NAME',
 }
 
 yaml_tolerate_preemptible = '''
@@ -48,13 +50,27 @@ yaml_disk_mount_spec = '''
 '''
 
 
+def combine_script_and_args(args):
+    if args.script:
+        with open(args.script, 'r+b') as script_file:
+            script_contents = script_file.read()
+
+        script_encoded = base64.b64encode(script_contents).decode('utf-8')
+        script_cmd = 'echo {script_encoded} | base64 --decode | bash'.format(script_encoded=script_encoded)
+
+        if args.cmd_args:
+            args.cmd_args.insert(0, script_cmd)
+        else:
+            args.cmd_args = [script_cmd]
+
+
 def replace_template(lines, key, value):
     if value is None:
         # Remove line(s)
-        return [l for l in lines if f'$({key})' not in l]
+        return [l for l in lines if '$({key})'.format(key=key) not in l]
     else:
         # Substitute value(s)
-        return [l.replace(f'$({key})', value) for l in lines]
+        return [l.replace('$({key})'.format(key=key), value) for l in lines]
 
 
 def convert_template_yaml(data, args):
@@ -77,8 +93,10 @@ def convert_template_yaml(data, args):
                     else:
                         new_command.append(command_segment)
 
-                cmd_args_name = f'CMD_ARGS{i}'
-                config_template['spec']['template']['spec']['containers'][i]['command'] = f'$({cmd_args_name})'
+                cmd_args_name = 'CMD_ARGS{i}'.format(i=i)
+                config_template['spec']['template']['spec']['containers'][i]['command'] = '$({cmd_args_name})'.format(
+                    cmd_args_name=cmd_args_name,
+                )
                 template_values[cmd_args_name] = json.dumps(new_command)
 
         template_values['CMD_ARGS'] = json.dumps(cmd_args)
@@ -105,6 +123,7 @@ def convert_template_yaml(data, args):
             else:
                 container_name = image_path
 
+            container_name = re.sub('[^A-Za-z0-9]', '-', container_name)
             template_values['CONTAINER_NAME'] = container_name
         else:
             template_values['CONTAINER_NAME'] = 'container-job'

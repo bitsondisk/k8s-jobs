@@ -1,7 +1,33 @@
 import pytest
-from types import SimpleNamespace
 
 from k8s_jobs import klib
+
+
+class Namespace(object):
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
+@pytest.mark.parametrize('script, cmd_args, expected_cmd_args', [
+    ('tests/scripts/hello_world.sh', ['echo', '"Hello, World!"'], [
+        'echo ZWNobyAnSGVsbG8sIFdvcmxkIScK | base64 --decode | bash',
+        'echo',
+        '"Hello, World!"',
+    ]),
+    ('tests/scripts/hello_world.sh', None, ['echo ZWNobyAnSGVsbG8sIFdvcmxkIScK | base64 --decode | bash']),
+    ('tests/scripts/hello_world.sh', [], ['echo ZWNobyAnSGVsbG8sIFdvcmxkIScK | base64 --decode | bash']),
+    (None, ['echo', '"Hello, World!"'], ['echo', '"Hello, World!"']),
+    ('', ['echo', '"Hello, World!"'], ['echo', '"Hello, World!"']),
+    (None, None, None),
+    ('', None, None),
+    (None, [], []),
+])
+def test_combine_script_and_args(script, cmd_args, expected_cmd_args):
+    args = Namespace(script=script, cmd_args=cmd_args)
+    klib.combine_script_and_args(args)
+
+    assert args.cmd_args == expected_cmd_args
 
 
 @pytest.mark.parametrize('test_template, expected_cmd', [
@@ -10,22 +36,22 @@ from k8s_jobs import klib
     ('tests/templates/array_continuation_cmd.yaml', 'command: ["date;", "ls", "-la"]'),
 ])
 def test_generate_yaml(test_template, expected_cmd):
-    args = SimpleNamespace(file=test_template,
-                           cmd_args=['ls', '-la'],
-                           image='syncing/the-ship',
-                           preemptible=True,
-                           name=None,
-                           container_name=None,
-                           time=None,
-                           cpu=None,
-                           memory=None,
-                           disk=None,
-                           cpu_limit=None,
-                           memory_limit=None,
-                           disk_limit=None,
-                           persistent_disk_name=None,
-                           mount_path=None,
-                           volume_name=None)
+    args = Namespace(file=test_template,
+                     cmd_args=['ls', '-la'],
+                     image='syncing/the-ship',
+                     preemptible=True,
+                     name=None,
+                     container_name=None,
+                     time=None,
+                     cpu=None,
+                     memory=None,
+                     disk=None,
+                     cpu_limit=None,
+                     memory_limit=None,
+                     disk_limit=None,
+                     persistent_disk_name=None,
+                     mount_path=None,
+                     volume_name=None)
 
     temp_yaml = klib.generate_templated_yaml(args)
 
@@ -63,7 +89,7 @@ def test_generate_yaml(test_template, expected_cmd):
     assert 'gke-preemptible' not in data
 
     # Test command and image
-    assert 'command: ["ls", "-la"]' in data
+    assert 'command: ["/bin/sh", "-c", "ls", "-la"]' in data
     assert 'name: basic' in data
     assert 'image: basic' in data
 
@@ -91,7 +117,7 @@ def test_generate_yaml(test_template, expected_cmd):
     assert 'gke-preemptible' not in data
 
     # Test command and image
-    assert 'command: ["ls", "-la"]' in data
+    assert 'command: ["/bin/sh", "-c", "ls", "-la"]' in data
     assert 'name: basic' in data
     assert 'image: basic' in data
 
