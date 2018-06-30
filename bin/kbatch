@@ -3,6 +3,7 @@
 import argparse
 import subprocess
 
+from k8s_jobs import __version__
 from k8s_jobs.klib import combine_script_and_args, generate_templated_yaml
 
 
@@ -24,6 +25,9 @@ def main():
     """
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--version', action='version', help='Show the current version of kbatch',
+                        version='%(prog)s {version}'.format(version=__version__))
+
     parser.add_argument('--file', '-f', help='Config yaml file to use (optional)')
     parser.add_argument('--image', '-i', help='Docker container image to run (required unless a yaml is provided)')
     parser.add_argument('--container-name', help='Container name to use (optional)')
@@ -41,6 +45,8 @@ def main():
     parser.add_argument('--persistent-disk-name', help='Persistent disk name (required to use a gcePersistentDisk)')
     parser.add_argument('--volume-name', help='Persistent disk volume name (optional)')
     parser.add_argument('--mount-path', help='Mount path for the persistent disk (optional, default is /static)')
+    parser.add_argument('--volume-read-write', help='Mount the volume as read-write (default is read-only)',
+                        action='store_true')
 
     parser.add_argument('--preemptible', '-p', help='Allow scheduling on preemptible nodes', action='store_true')
 

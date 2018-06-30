@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: $(JOB_NAME)-
+spec:
+  activeDeadlineSeconds: $(TIME_LIMIT_SECONDS)
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: $(CONTAINER_NAME)
+        image: $(CONTAINER_IMAGE)
+        command:
+        - /bin/sh
+        - -c
+        - $(CMD_ARGS)
+        resources:
+          requests:
+            cpu: $(CPU_REQUEST)
+            memory: $(MEM_REQUEST)
+            ephemeral-storage: $(DISK_REQUEST)
+          limits:
+            cpu: $(CPU_LIMIT)
+            memory: $(MEM_LIMIT)
+            ephemeral-storage: $(DISK_LIMIT)
+      testValue: Yep

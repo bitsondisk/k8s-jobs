@@ -11,14 +11,22 @@ usage: kbatch [-h] [--file FILE] [--image IMAGE]
               [--memory MEMORY] [--disk DISK] [--cpu-limit CPU_LIMIT]
               [--memory-limit MEMORY_LIMIT] [--disk-limit DISK_LIMIT]
               [--time TIME] [--preemptible]
-              [cmd [args...]]
+              -- [cmd [args...]]
 
 positional arguments:
-  cmd [args...]         Command with arguments to run in the given container
-                        (optional)
+  -- cmd [args...]      Command with arguments to run in the given container
+                        Optional, if your container has a pre-defined command,
+                        otherwise required or your pod/job will 'crash' as it
+                        has no command to run. You can use 'sleep 6000' for
+                        testing an environment, for example.
+                        Also note that this command will be run using /bin/sh
+                        so if your command includes shell-like syntax that you
+                        do not want run in the shell, quote the command, for
+                        example: 'perl -Mbignum=bpi -wle "print bpi(2000)"'
 
 optional arguments:
   -h, --help            show this help message and exit
+  --version             Show the current version of kbatch
   --file FILE, -f FILE  Config yaml file to use (optional)
   --image IMAGE, -i IMAGE
                         Docker container image to run (required unless a yaml
@@ -46,6 +54,8 @@ optional arguments:
                         Mount path for the persistent disk (optional, default
                         is /static)
   --preemptible, -p     Allow scheduling on preemptible nodes
+  --script SCRIPT       Execute a bash script from a file from within the job
+                        before the command args if they are present
 ```
 
 This command will run the given docker image or yaml configuration as a batch job through kubernetes,
@@ -56,10 +66,11 @@ different instances.
 
 Example job command line to calculate pi using perl:
 
-`kbatch -n kbatch-test-pi -i perl --time 100 -- perl -Mbignum=bpi -wle "print bpi(2000)"`
+`kbatch -n kbatch-test-pi -i perl --time 100 'perl -Mbignum=bpi -wle "print bpi(2000)"'`
 
 This example job has the name of `kbatch-test-pi`, uses the image `perl`, has a maximum execution time of 100 seconds,
-and runs the command `perl -Mbignum=bpi -wle "print bpi(2000)"` inside the container.
+and runs the command `perl -Mbignum=bpi -wle "print bpi(2000)"` inside the container. This also demonstrates the
+alternative quoting of the command and args to not parse the parenthesis in the shell.
 
 Note that in order to use preemptible nodes with node taints, you should create a kubernetes node pool with the taint
 of `gke-preemptible` as the key, `true` as the value, and `NoSchedule` as the effect. This will prevent jobs that are
@@ -69,6 +80,17 @@ not specified as preemptible from being scheduled on the preemptible nodes.
 `usage: klist`
 
 This command lists all currently running jobs. See: `kubectl get jobs` for advanced options.
+
+## kpods
+`usage: kpods`
+
+This command lists all currently running pods. See: `kubectl get pods` for advanced options. Note that `kpods -w` will
+watch pods and show changes dynamically.
+
+## kexec
+`usage: kexec pod-id [-- cmd args ... (optional)]`
+
+This command will start a bash shell in the given pod, or run the given command if specified.
 
 ## kstatus
 `usage: kstatus job-id`
@@ -82,7 +104,7 @@ This command will cancel one or more running jobs. See: `kubectl delete` for adv
 Note that this command can also be used to delete old information for completed jobs.
 
 ## klogs
-`usage: klogs job-id [additional log options such as -f for tailing the logs]
+`usage: klogs job-id [additional log options such as -f for tailing the logs]`
 
 This command will find one of the pods a job is running on and run `kubectl logs <POD> <EXTRA_ARGS>` on that pod,
 appending any arguments passed to klogs
@@ -90,8 +112,8 @@ appending any arguments passed to klogs
 
 ## krun
 ```
-usage: krun [-h] --image IMAGE [--name NAME] [--env ENV]
-            [cmd [args...]]
+usage: krun [-h] --image IMAGE [--name NAME] [--env ENV] [--script SCRIPT]
+            -- [cmd [args...]]
 
 positional arguments:
   cmd [args...]         Command with arguments to run in the given container
@@ -105,10 +127,12 @@ optional arguments:
                         this name)
   --env ENV             Environment variable to set in the format
                         "VARIABLE=value"
+  --script SCRIPT       Execute a bash script from a file from within the job
+                        before the command args if they are present
 ```
 
 This command will start the given container as an interactive job in kubernetes for shell commands or other interactive
-processes for R&D or debugging purposes. If no command is specified, this will default to a bash shell.
+processes for R&D or debugging purposes. If no command or script is specified, this will default to a bash shell.
 
 ## Installation
 To install the local version for development or usage, run:

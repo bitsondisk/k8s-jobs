@@ -24,30 +24,38 @@ arg_templates = {
     'persistent_disk_name': 'PD_NAME',
     'mount_path': 'MOUNT_PATH',
     'volume_name': 'VOLUME_NAME',
+    'volume_read_write': 'VOLUME_READ_WRITE',
+    'preemptible': 'ALLOW_PREEMPTIBLE',
 }
 
-yaml_tolerate_preemptible = '''
-      tolerations:
-      - key: gke-preemptible
-        operator: Equal
-        value: "true"
-        effect: NoSchedule
-'''
+# These args are only used for adding additional sections to the YAML,
+# and are not replaced as templates.
+arg_flags = [
+    'VOLUME_READ_WRITE',
+    'ALLOW_PREEMPTIBLE',
+]
 
-yaml_disk_mount_containers = '''
-        volumeMounts:
-          - mountPath: $(MOUNT_PATH)
-            name: $(VOLUME_NAME)
-            readOnly: true
-'''
+yaml_tolerate_preemptible = {
+    'key': 'gke-preemptible',
+    'operator': 'Equal',
+    'value': 'true',
+    'effect': 'NoSchedule'
+}
 
-yaml_disk_mount_spec = '''
-      volumes:
-        - name: $(VOLUME_NAME)
-          gcePersistentDisk:
-            pdName: $(PD_NAME)
-            fsType: ext4
-'''
+yaml_disk_mount_containers = {
+    'mountPath': '$(MOUNT_PATH)',
+    'name': '$(VOLUME_NAME)',
+    'readOnly': '$(VOLUME_READ_ONLY)'
+}
+
+yaml_disk_mount_spec = {
+    'name': '$(VOLUME_NAME)',
+    'gcePersistentDisk': {
+        'pdName': '$(PD_NAME)',
+        'fsType': 'ext4',
+        'readOnly': '$(VOLUME_READ_ONLY)'
+    }
+}
 
 
 def combine_script_and_args(args):
@@ -76,17 +84,22 @@ def replace_template(lines, key, value):
 def convert_template_yaml(data, args):
     template_values = {template: getattr(args, attr) for attr, template in arg_templates.items()}
 
+    config_template = yaml.load(data)
+
     # Ensure that the command and args are in the format ["command", "arg1", "arg2", ...]
     cmd_args = template_values['CMD_ARGS']
     if cmd_args:
-        config_template = yaml.load(data)
-        containers_config = config_template.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
+        containers_config = get_path(config_template, 'spec.template.spec.containers', [])
         for i, container_config in enumerate(containers_config):
             command = container_config['command']
             if isinstance(command, list):
                 new_command = []
+                sh_found = False
                 for command_segment in command:
-                    if command_segment == '$(CMD_ARGS)':
+                    if command_segment.startswith('/bin/sh'):
+                        sh_found = True
+
+                    if command_segment == '$(CMD_ARGS)' and not sh_found:
                         new_command += cmd_args
                     elif '$(CMD_ARGS)' in command_segment:
                         new_command.append(command_segment.replace('$(CMD_ARGS)', ' '.join(cmd_args)))
@@ -101,8 +114,39 @@ def convert_template_yaml(data, args):
 
         template_values['CMD_ARGS'] = json.dumps(cmd_args)
 
-    data = yaml.dump(config_template)
+    if template_values['ALLOW_PREEMPTIBLE']:
+        spec_config = get_path(config_template, 'spec.template.spec')
+
+        if not spec_config:
+            raise RuntimeError('Could not determine where to insert preemptible nodes yaml configuration, ensure your '
+                               'yaml file contains the sections spec.template.spec')
+
+        insert_or_append_path(config_template, 'spec.template.spec.tolerations', yaml_tolerate_preemptible)
+
+
+    if template_values['PD_NAME']:
+        spec_config = get_path(config_template, 'spec.template.spec')
+        containers_config = get_path(config_template, 'spec.template.spec.containers')
+
+        if not spec_config or not containers_config:
+            raise RuntimeError('Could not determine where to insert preemptible nodes yaml configuration, ensure your '
+                               'yaml file contains the sections spec.template.spec and spec.template.spec.containers '
+                               'with at least one container')
+
+        insert_or_append_path(config_template, 'spec.template.spec.volumes', yaml_disk_mount_spec)
+
+        for i in range(len(containers_config)):
+            insert_or_append_path(config_template,
+                                  'spec.template.spec.containers.{}.volumeMounts'.format(i),
+                                  yaml_disk_mount_containers)
+
+    data = yaml.dump(config_template, default_flow_style=False)
     lines = data.split('\n')
+
+    template_values['VOLUME_READ_ONLY'] = 'true' if not template_values['VOLUME_READ_WRITE'] else None
+
+    for flag in arg_flags:
+        del template_values[flag]
 
     if not template_values['JOB_NAME']:
         template_values['JOB_NAME'] = 'kjob'
@@ -145,16 +189,6 @@ def generate_templated_yaml(args):
 
         data = pkgutil.get_data("k8s_jobs.klib", "default.yaml").decode('utf-8')
 
-    if args.persistent_disk_name:
-        # Remove the extra newline in the file
-        data = data[:-1] + yaml_disk_mount_containers
-
-    if args.preemptible:
-        data = data[:-1] + yaml_tolerate_preemptible
-
-    if args.persistent_disk_name:
-        data = data[:-1] + yaml_disk_mount_spec
-
     data = convert_template_yaml(data, args)
 
     temp_yaml = tempfile.NamedTemporaryFile()
@@ -168,4 +202,68 @@ def generate_templated_yaml(args):
 
 
 def random_string(size):
-    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
+    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
+
+
+def get_path(obj, path, default=None):
+    for key in path.split('.'):
+        if isinstance(obj, list):
+            try:
+                key_int = int(key)
+            except (TypeError, ValueError):
+                raise KeyError('Found a list, key "{}" is not a valid integer index.'.format(key))
+
+            if key_int >= len(obj):
+                return default
+
+            obj = obj[key_int]
+
+        elif isinstance(obj, dict):
+            if key not in obj:
+                return default
+            else:
+                obj = obj[key]
+
+        elif key:
+            raise KeyError('Found non-dict or list, expected to be able to index for key "{}"'.format(key))
+
+    return obj
+
+
+def get_parent_and_key_from_path(obj, path):
+    last_dot = path.rfind('.')
+
+    if last_dot == -1:
+        key = path
+
+        update_obj = obj
+    else:
+        key = path[last_dot + 1:]
+
+        update_obj = get_path(obj, path[:last_dot])
+
+    if not key:
+        raise KeyError('Badly-formatted path for updates, must not end in . and contain a valid key to set')
+
+    if not update_obj:
+        raise KeyError('Path "{}" was not found in {}'.format(path, obj))
+
+    return update_obj, key
+
+
+def set_path(obj, path, value):
+    update_obj, key = get_parent_and_key_from_path(obj, path)
+
+    update_obj[key] = value
+
+
+def insert_or_append_path(obj, path, value):
+    update_obj, key = get_parent_and_key_from_path(obj, path)
+
+    if key in update_obj:
+        if isinstance(update_obj[key], list):
+            update_obj[key].append(value)
+        else:
+            raise KeyError('Existing value is not a list for "{}" in {}'.format(path, update_obj))
+    else:
+        update_obj[key] = [value]

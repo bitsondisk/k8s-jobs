@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ $# -eq 1 ]; then
+    kubectl exec -it "$@" bash
+elif [ $# -gt 1 ]; then
+    kubectl exec -it "$@"
+else
+    echo "Must provide a pod name for a bash shell, or a pod name and shell command" >&2
+    exit 1
+fi
