@@ -13,6 +13,7 @@ requirements:
     - setuptools
   run:
     # required for test
+    - semantic-version
     - freenome-build >=1.0.32
     - jq
     - pyyaml
