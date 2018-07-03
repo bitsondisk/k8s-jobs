@@ -1,4 +1,7 @@
+import json
 import pytest
+import subprocess as sp
+from unittest.mock import call, MagicMock, patch
 
 from k8s_jobs import klib
 
@@ -6,6 +9,53 @@ from k8s_jobs import klib
 class Namespace(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+
+@pytest.mark.parametrize('num_retries, kubernetes_version, should_raise_error, should_call_popen', [
+    ('0', '1.10.0', False, False),
+    ('1', '1.10.0', True, True),  # noqa
+    ('5', '1.10.0', True, True),
+    ('0', '1.11.0', False, False),
+    ('1', '1.11.0', False, True),
+    ('5', '1.11.0', False, True),
+])
+@patch('k8s_jobs.klib.sp.Popen')
+def test_verify_retry_limit_supported(Popen, num_retries, kubernetes_version, should_raise_error, should_call_popen):
+    popen_retval = MagicMock()
+    popen_retval.communicate.return_value = json.dumps({
+        'clientVersion': {
+            'major': '1',
+            'minor': '9',
+            'gitVersion': 'v1.9.7',
+            'gitCommit': 'dd5e1a2978fd0b97d9b78e1564398aeea7e7fe92',
+            'gitTreeState': 'clean',
+            'buildDate': '2018-04-19T00:05:56Z',
+            'goVersion': 'go1.9.3',
+            'compiler': 'gc',
+            'platform': 'darwin/amd64',
+        },
+        'serverVersion': {
+            'major': '1',
+            'minor': '10+',
+            'gitVersion': 'v{kubernetes_version}-gke.3'.format(kubernetes_version=kubernetes_version),
+            'gitCommit': 'd2c7a2bd41036f9474287579a725dc54c904e92d',
+            'gitTreeState': 'clean',
+            'buildDate': '2018-05-23T00:19:39Z',
+            'goVersion': 'go1.9.3b4',
+            'compiler': 'gc',
+            'platform': 'linux/amd64',
+        },
+    }).encode('utf-8'), None
+    Popen.return_value = popen_retval
+
+    if should_raise_error:
+        with pytest.raises(RuntimeError):
+            klib.verify_retry_limit_supported(num_retries)
+    else:
+        klib.verify_retry_limit_supported(num_retries)
+
+    if should_call_popen:
+        Popen.assert_called_once_with('kubectl version -o json', shell=True, stdout=sp.PIPE)
 
 
 @pytest.mark.parametrize('script, cmd_args, expected_cmd_args', [
@@ -29,13 +79,20 @@ def test_combine_script_and_args(script, cmd_args, expected_cmd_args):
     assert args.cmd_args == expected_cmd_args
 
 
+@pytest.mark.parametrize('retry_limit, should_call_verify_retry_limit_supported', [
+    (None, False),
+    ('0', True),
+    ('5', True),
+])
 @pytest.mark.parametrize('test_template, expected_cmd', [
     ('tests/templates/default_cmd.yaml', 'command: ["ls", "-la"]'),
     ('tests/templates/interpolated_cmd.yaml', 'command: ["/bin/sh", "-c", "date; ls -la"]'),
     ('tests/templates/sh_array_cmd.yaml', 'command: ["/bin/sh", "-c", "ls -la"]'),
     ('tests/templates/array_continuation_cmd.yaml', 'command: ["date;", "ls", "-la"]'),
 ])
-def test_generate_yaml(test_template, expected_cmd):
+@patch('k8s_jobs.klib.verify_retry_limit_supported')
+def test_generate_yaml_complete(verify_retry_limit_supported, test_template, expected_cmd,
+                                retry_limit, should_call_verify_retry_limit_supported):
     args = Namespace(file=test_template,
                      cmd_args=['ls', '-la'],
                      image='syncing/the-ship',
@@ -52,6 +109,7 @@ def test_generate_yaml(test_template, expected_cmd):
                      persistent_disk_name=None,
                      mount_path=None,
                      volume_name=None,
+                     retry_limit=retry_limit,
                      volume_read_write=None)
 
     temp_yaml = klib.generate_templated_yaml(args)
@@ -142,6 +200,11 @@ def test_generate_yaml(test_template, expected_cmd):
     with pytest.raises(RuntimeError):
         klib.generate_templated_yaml(args)
 
+    if should_call_verify_retry_limit_supported:
+        assert verify_retry_limit_supported.call_args_list == [call(retry_limit) for _ in range(3)]
+    else:
+        assert verify_retry_limit_supported.call_count == 0
+
 
 def test_generate_yaml_sections_missing():
     args = Namespace(file='tests/templates/bogus.yaml',
@@ -160,6 +223,7 @@ def test_generate_yaml_sections_missing():
                      persistent_disk_name=None,
                      mount_path=None,
                      volume_name=None,
+                     retry_limit=None,
                      volume_read_write=None)
 
     # This should not return an error

@@ -4,6 +4,7 @@ metadata:
   generateName: $(JOB_NAME)-
 spec:
   activeDeadlineSeconds: $(TIME_LIMIT_SECONDS)
+  backoffLimit: $(RETRY_LIMIT)
   template:
     spec:
       restartPolicy: Never

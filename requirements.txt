@@ -1,1 +1,2 @@
 PyYAML==3.12
+semantic-version==2.6.0

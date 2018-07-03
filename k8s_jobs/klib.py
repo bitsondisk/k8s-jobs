@@ -4,8 +4,11 @@ import os
 import random
 import re
 import string
+import subprocess as sp
 import tempfile
 import pkgutil
+
+from semantic_version import Version
 import yaml
 
 
@@ -26,6 +29,7 @@ arg_templates = {
     'volume_name': 'VOLUME_NAME',
     'volume_read_write': 'VOLUME_READ_WRITE',
     'preemptible': 'ALLOW_PREEMPTIBLE',
+    'retry_limit': 'RETRY_LIMIT',
 }
 
 # These args are only used for adding additional sections to the YAML,
@@ -56,6 +60,24 @@ yaml_disk_mount_spec = {
         'readOnly': '$(VOLUME_READ_ONLY)'
     }
 }
+
+kubernetes_version_matcher = re.compile('v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)')
+
+
+def verify_retry_limit_supported(num_retries):
+    if int(num_retries) < 1:
+        return
+
+    kubernetes_version_response, _ = sp.Popen('kubectl version -o json', shell=True, stdout=sp.PIPE).communicate()
+    kubernetes_version_json = json.loads(kubernetes_version_response.decode('utf-8'))
+    kubernetes_version = kubernetes_version_matcher.match(
+        kubernetes_version_json['serverVersion']['gitVersion'],
+    ).group('version')
+
+    if Version.coerce(kubernetes_version) < Version('1.11.0'):
+        raise RuntimeError('Your Kubernetes version is v{kubernetes_version}. '
+                           'Kubernetes versions prior to v1.11.0 will retry an indefinite amount of '
+                           'times with retries set to > 0'.format(kubernetes_version=kubernetes_version))
 
 
 def combine_script_and_args(args):
@@ -150,6 +172,9 @@ def convert_template_yaml(data, args):
 
     if not template_values['JOB_NAME']:
         template_values['JOB_NAME'] = 'kjob'
+
+    if template_values['RETRY_LIMIT']:
+        verify_retry_limit_supported(template_values['RETRY_LIMIT'])
 
     if not template_values['MOUNT_PATH']:
         template_values['MOUNT_PATH'] = '/static'

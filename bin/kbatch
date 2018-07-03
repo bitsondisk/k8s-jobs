@@ -52,6 +52,9 @@ def main():
 
     parser.add_argument('--script', help='Execute a bash script from a file from within the job '
                         'before the command args if they are present')
+    parser.add_argument('--retry-limit', help='The number of times a job will retry a pod until it fails. '
+                                              'If not specified, a job will be retried an infinite amount of times '
+                                              'if not successful')
 
     parser.add_argument('cmd_args', metavar='cmd [args...]', nargs='*',
                         help='Command with arguments to run in the given container (optional)')
