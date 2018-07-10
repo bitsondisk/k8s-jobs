@@ -55,6 +55,9 @@ def main():
     parser.add_argument('--retry-limit', help='The number of times a job will retry a pod until it fails. '
                                               'If not specified, a job will be retried an infinite amount of times '
                                               'if not successful')
+    parser.add_argument('--partition', help='The partition name (value of the partition label) of the node pool')
+    parser.add_argument('--labels', help='A list of node selector key value pairs, '
+                                         'e.g. "--labels key1=value1 key2=value2', nargs='*', default=[])
 
     parser.add_argument('cmd_args', metavar='cmd [args...]', nargs='*',
                         help='Command with arguments to run in the given container (optional)')

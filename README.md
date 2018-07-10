@@ -6,11 +6,15 @@ on the command line.
 
 ## kbatch
 ```
-usage: kbatch [-h] [--file FILE] [--image IMAGE]
+usage: kbatch [-h] [--version] [--file FILE] [--image IMAGE]
               [--container-name CONTAINER_NAME] [--name NAME] [--cpu CPU]
               [--memory MEMORY] [--disk DISK] [--cpu-limit CPU_LIMIT]
               [--memory-limit MEMORY_LIMIT] [--disk-limit DISK_LIMIT]
-              [--time TIME] [--preemptible]
+              [--time TIME] [--persistent-disk-name PERSISTENT_DISK_NAME]
+              [--volume-name VOLUME_NAME] [--mount-path MOUNT_PATH]
+              [--volume-read-write] [--preemptible] [--script SCRIPT]
+              [--retry-limit RETRY_LIMIT] [--partition PARTITION]
+              [--labels LABELS]
               -- [cmd [args...]]
 
 positional arguments:
@@ -61,6 +65,11 @@ optional arguments:
                         The number of times a job will retry a pod until it
                         fails. If not specified, a job will be retried an
                         infinite amount of times if not successful
+  --partition PARTITION
+                        The partition name (value of the partition label) of
+                        the node pool
+  --labels LABELS       A list of node selector key value pairs, e.g. "--
+                        labels key1=value1 key2=value2
 ```
 
 This command will run the given docker image or yaml configuration as a batch job through kubernetes,

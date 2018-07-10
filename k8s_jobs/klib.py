@@ -66,6 +66,9 @@ millicpu_request_matcher = re.compile('(?P<millicpus>[0-9]+)m')
 kubernetes_version_matcher = re.compile('v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)')
 
 
+LABEL_ARGUMENTS = ['partition']
+
+
 def adjust_cpu_request(args):
     if not args.cpu:
         return
@@ -78,6 +81,29 @@ def adjust_cpu_request(args):
         args.cpu = '{millicpus}m'.format(millicpus=int(millicpu_request) - 500)
     else:
         args.cpu = str(float(args.cpu) - 0.5)
+
+
+def add_node_selectors(args, config_template):
+    labels = {
+        label_name: value for label_name, value in [
+            tuple(label_arg.split('=')) for label_arg in args.labels
+        ] if value
+    }
+    labels_from_args = {
+        label_name: getattr(args, label_name)
+        for label_name in LABEL_ARGUMENTS if getattr(args, label_name)
+    }
+
+    duplicate_labels = set(labels_from_args) & set(labels)
+
+    if duplicate_labels:
+        raise ValueError('You cannot specify "{duplicate_labels}" as labels since you '
+                         'specified them as CLI arguments'.format(duplicate_labels=', '.join(duplicate_labels)))
+
+    labels.update(labels_from_args)
+
+    if labels:
+        set_path(config_template, 'spec.template.spec.nodeSelector', labels)
 
 
 def verify_retry_limit_supported(num_retries):
@@ -125,6 +151,7 @@ def convert_template_yaml(data, args):
     config_template = yaml.load(data)
 
     adjust_cpu_request(args)
+    add_node_selectors(args, config_template)
 
     # Ensure that the command and args are in the format ["command", "arg1", "arg2", ...]
     cmd_args = template_values['CMD_ARGS']

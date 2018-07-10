@@ -1,7 +1,10 @@
 import json
+import os
 import pytest
 import subprocess as sp
-from unittest.mock import call, MagicMock, patch
+from unittest.mock import call, MagicMock, patch, ANY
+
+import yaml
 
 from k8s_jobs import klib
 
@@ -9,6 +12,60 @@ from k8s_jobs import klib
 class Namespace(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+
+@pytest.fixture(scope='function')
+def config_template():
+    template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates', 'default_cmd.yaml')
+
+    with open(template_path, 'r') as template_file:
+        config_template = yaml.load(template_file.read())
+
+    return config_template
+
+
+def test_add_node_selectors_happy_path(config_template):
+    partition = 'partition'
+    label1_name = 'label1'
+    label1_value = 'value1'
+    label2_name = 'label2'
+    label2_value = 'value2'
+
+    args = Namespace(partition=partition, labels=[
+        '{label1_name}={label1_value}'.format(label1_name=label1_name, label1_value=label1_value),
+        '{label2_name}={label2_value}'.format(label2_name=label2_name, label2_value=label2_value),
+    ])
+
+    klib.add_node_selectors(args, config_template)
+
+    node_selectors = config_template['spec']['template']['spec']['nodeSelector']
+
+    assert node_selectors == {
+        label1_name: label1_value,
+        label2_name: label2_value,
+        'partition': partition,
+    }
+
+
+def test_add_node_selectors_duplicate_labels(config_template):
+    args = Namespace(partition='partition1', labels=[
+        'partition=partition2',
+        'label1_name=label1_value',
+        'label2_name=label2_value',
+    ])
+
+    with pytest.raises(ValueError):
+        klib.add_node_selectors(args, config_template)
+
+
+@pytest.mark.parametrize('labels', [[], ['label=']])
+@pytest.mark.parametrize('partition', [None, ''])
+def test_add_selectors_no_values(labels, partition, config_template):
+    args = Namespace(partition=partition, labels=labels)
+
+    klib.add_node_selectors(args, config_template)
+
+    assert not config_template['spec']['template']['spec'].get('nodeSelector')
 
 
 @pytest.mark.parametrize('num_retries, kubernetes_version, should_raise_error, should_call_popen', [
@@ -106,8 +163,9 @@ def test_adjust_cpu_request(cpu_request, expected_cpu_request):
 ])
 @patch('k8s_jobs.klib.verify_retry_limit_supported')
 @patch('k8s_jobs.klib.adjust_cpu_request')
-def test_generate_yaml_complete(adjust_cpu_request, verify_retry_limit_supported, test_template, expected_cmd,
-                                retry_limit, should_call_verify_retry_limit_supported):
+@patch('k8s_jobs.klib.add_node_selectors')
+def test_generate_yaml_complete(add_node_selectors, adjust_cpu_request, verify_retry_limit_supported, expected_cmd,
+                                test_template, retry_limit, should_call_verify_retry_limit_supported):
     args = Namespace(file=test_template,
                      cmd_args=['ls', '-la'],
                      image='syncing/the-ship',
@@ -125,6 +183,8 @@ def test_generate_yaml_complete(adjust_cpu_request, verify_retry_limit_supported
                      mount_path=None,
                      volume_name=None,
                      retry_limit=retry_limit,
+                     labels=[],
+                     partition=None,
                      volume_read_write=None)
 
     temp_yaml = klib.generate_templated_yaml(args)
@@ -221,6 +281,7 @@ def test_generate_yaml_complete(adjust_cpu_request, verify_retry_limit_supported
         assert verify_retry_limit_supported.call_count == 0
 
     assert adjust_cpu_request.call_args_list == [call(args) for _ in range(3)]
+    assert add_node_selectors.call_args_list == [call(args, ANY) for _ in range(3)]
 
 
 def test_generate_yaml_sections_missing():
@@ -241,6 +302,8 @@ def test_generate_yaml_sections_missing():
                      mount_path=None,
                      volume_name=None,
                      retry_limit=None,
+                     labels=[],
+                     partition=None,
                      volume_read_write=None)
 
     # This should not return an error
