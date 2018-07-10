@@ -79,6 +79,20 @@ def test_combine_script_and_args(script, cmd_args, expected_cmd_args):
     assert args.cmd_args == expected_cmd_args
 
 
+@pytest.mark.parametrize('cpu_request, expected_cpu_request', [
+    ('', ''),
+    (None, None),
+    ('16', '15.5'),
+    ('16000m', '15500m'),
+])
+def test_adjust_cpu_request(cpu_request, expected_cpu_request):
+    args = Namespace(cpu=cpu_request)
+
+    klib.adjust_cpu_request(args)
+
+    assert args.cpu == expected_cpu_request
+
+
 @pytest.mark.parametrize('retry_limit, should_call_verify_retry_limit_supported', [
     (None, False),
     ('0', True),
@@ -91,7 +105,8 @@ def test_combine_script_and_args(script, cmd_args, expected_cmd_args):
     ('tests/templates/array_continuation_cmd.yaml', 'command: ["date;", "ls", "-la"]'),
 ])
 @patch('k8s_jobs.klib.verify_retry_limit_supported')
-def test_generate_yaml_complete(verify_retry_limit_supported, test_template, expected_cmd,
+@patch('k8s_jobs.klib.adjust_cpu_request')
+def test_generate_yaml_complete(adjust_cpu_request, verify_retry_limit_supported, test_template, expected_cmd,
                                 retry_limit, should_call_verify_retry_limit_supported):
     args = Namespace(file=test_template,
                      cmd_args=['ls', '-la'],
@@ -204,6 +219,8 @@ def test_generate_yaml_complete(verify_retry_limit_supported, test_template, exp
         assert verify_retry_limit_supported.call_args_list == [call(retry_limit) for _ in range(3)]
     else:
         assert verify_retry_limit_supported.call_count == 0
+
+    assert adjust_cpu_request.call_args_list == [call(args) for _ in range(3)]
 
 
 def test_generate_yaml_sections_missing():

@@ -61,7 +61,23 @@ yaml_disk_mount_spec = {
     }
 }
 
+
+millicpu_request_matcher = re.compile('(?P<millicpus>[0-9]+)m')
 kubernetes_version_matcher = re.compile('v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)')
+
+
+def adjust_cpu_request(args):
+    if not args.cpu:
+        return
+
+    millicpu_request = millicpu_request_matcher.match(args.cpu)
+
+    if millicpu_request:
+        millicpu_request = millicpu_request.group('millicpus')
+
+        args.cpu = '{millicpus}m'.format(millicpus=int(millicpu_request) - 500)
+    else:
+        args.cpu = str(float(args.cpu) - 0.5)
 
 
 def verify_retry_limit_supported(num_retries):
@@ -107,6 +123,8 @@ def convert_template_yaml(data, args):
     template_values = {template: getattr(args, attr) for attr, template in arg_templates.items()}
 
     config_template = yaml.load(data)
+
+    adjust_cpu_request(args)
 
     # Ensure that the command and args are in the format ["command", "arg1", "arg2", ...]
     cmd_args = template_values['CMD_ARGS']
