@@ -146,11 +146,12 @@ def replace_template(lines, key, value):
 
 
 def convert_template_yaml(data, args):
+    adjust_cpu_request(args)
+
     template_values = {template: getattr(args, attr) for attr, template in arg_templates.items()}
 
     config_template = yaml.load(data)
 
-    adjust_cpu_request(args)
     add_node_selectors(args, config_template)
 
     # Ensure that the command and args are in the format ["command", "arg1", "arg2", ...]
