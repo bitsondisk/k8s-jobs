@@ -24,6 +24,19 @@ def config_template():
     return config_template
 
 
+@pytest.mark.parametrize('time, expected_time', [
+    (None, None),
+    ('', ''),
+    ('35', '2100'),
+])
+def test_adjust_time(time, expected_time):
+    args = Namespace(time=time)
+
+    klib.adjust_time(args)
+
+    assert args.time == expected_time
+
+
 def test_add_node_selectors_happy_path(config_template):
     partition = 'partition'
     label1_name = 'label1'
@@ -163,9 +176,10 @@ def test_adjust_cpu_request(cpu_request, expected_cpu_request):
 ])
 @patch('k8s_jobs.klib.verify_retry_limit_supported')
 @patch('k8s_jobs.klib.adjust_cpu_request')
+@patch('k8s_jobs.klib.adjust_time')
 @patch('k8s_jobs.klib.add_node_selectors')
-def test_generate_yaml_complete(add_node_selectors, adjust_cpu_request, verify_retry_limit_supported, expected_cmd,
-                                test_template, retry_limit, should_call_verify_retry_limit_supported):
+def test_generate_yaml_complete(add_node_selectors, adjust_time, adjust_cpu_request, verify_retry_limit_supported,
+                                expected_cmd, test_template, retry_limit, should_call_verify_retry_limit_supported):
     args = Namespace(file=test_template,
                      cmd_args=['ls', '-la'],
                      image='syncing/the-ship',
@@ -281,6 +295,7 @@ def test_generate_yaml_complete(add_node_selectors, adjust_cpu_request, verify_r
         assert verify_retry_limit_supported.call_count == 0
 
     assert adjust_cpu_request.call_args_list == [call(args) for _ in range(3)]
+    assert adjust_time.call_args_list == [call(args) for _ in range(3)]
     assert add_node_selectors.call_args_list == [call(args, ANY) for _ in range(3)]
 
 

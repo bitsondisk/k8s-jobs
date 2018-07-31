@@ -40,7 +40,7 @@ def main():
     parser.add_argument('--cpu-limit', help='CPU limit (In CPUs: 100m (== 0.1), 4)')
     parser.add_argument('--memory-limit', help='Memory limit (In bytes: 1024, 1e6, 100M, 128Mi)')
     parser.add_argument('--disk-limit', help='Disk limit (In bytes: 1024, 1e6, 100M, 128Mi)')
-    parser.add_argument('--time', help='Time limit (seconds)')
+    parser.add_argument('--time', help='Time limit (minutes)')
 
     parser.add_argument('--persistent-disk-name', help='Persistent disk name (required to use a gcePersistentDisk)')
     parser.add_argument('--volume-name', help='Persistent disk volume name (optional)')

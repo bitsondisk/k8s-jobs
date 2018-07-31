@@ -83,6 +83,13 @@ def adjust_cpu_request(args):
         args.cpu = str(float(args.cpu) - 0.5)
 
 
+def adjust_time(args):
+    if not args.time:
+        return
+
+    args.time = str(int(args.time) * 60)
+
+
 def add_node_selectors(args, config_template):
     labels = {
         label_name: value for label_name, value in [
@@ -147,6 +154,7 @@ def replace_template(lines, key, value):
 
 def convert_template_yaml(data, args):
     adjust_cpu_request(args)
+    adjust_time(args)
 
     template_values = {template: getattr(args, attr) for attr, template in arg_templates.items()}
 

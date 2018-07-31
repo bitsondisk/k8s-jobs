@@ -48,7 +48,7 @@ optional arguments:
                         Memory limit (In bytes: 1024, 1e6, 100M, 128Mi)
   --disk-limit DISK_LIMIT
                         Disk limit (In bytes: 1024, 1e6, 100M, 128Mi)
-  --time TIME           Time limit (seconds)
+  --time TIME           Time limit (minutes)
   --persistent-disk-name PERSISTENT_DISK_NAME
                         Persistent disk name (required to use a
                         gcePersistentDisk)
@@ -82,7 +82,7 @@ Example job command line to calculate pi using perl:
 
 `kbatch -n kbatch-test-pi -i perl --time 100 'perl -Mbignum=bpi -wle "print bpi(2000)"'`
 
-This example job has the name of `kbatch-test-pi`, uses the image `perl`, has a maximum execution time of 100 seconds,
+This example job has the name of `kbatch-test-pi`, uses the image `perl`, has a maximum execution time of 100 minutes,
 and runs the command `perl -Mbignum=bpi -wle "print bpi(2000)"` inside the container. This also demonstrates the
 alternative quoting of the command and args to not parse the parenthesis in the shell.
 
