@@ -52,7 +52,7 @@ def main():
 
     parser.add_argument('--script', help='Execute a bash script from a file from within the job '
                         'before the command args if they are present')
-    parser.add_argument('--retry-limit', help='The number of times a job will retry a pod until it fails. '
+    parser.add_argument('--retry-limit', help='The number of times a job will retry a failed pod until it succeeds. '
                                               'If not specified, a job will be retried an infinite amount of times '
                                               'if not successful')
     parser.add_argument('--partition', help='The partition name (value of the partition label) of the node pool')
