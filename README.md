@@ -64,8 +64,8 @@ optional arguments:
   --script SCRIPT       Execute a bash script from a file from within the job
                         before the command args if they are present
   --retry-limit RETRY_LIMIT
-                        The number of times a job will retry a pod until it
-                        fails. If not specified, a job will be retried an
+                        The number of times a job will retry a failed pod until it
+                        succeeds. If not specified, a job will be retried an
                         infinite amount of times if not successful
   --partition PARTITION
                         The partition name (value of the partition label) of
