@@ -11,6 +11,7 @@ build:
 requirements:
   build:
     - setuptools
+    - python {{ python }}
   run:
     # required for test
     - semantic_version
