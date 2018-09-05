@@ -14,6 +14,7 @@ requirements:
     - python {{ python }}
   run:
     # required for test
+    - python
     - semantic_version
     - freenome-build >=1.0.32
     - jq
