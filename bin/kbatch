@@ -4,9 +4,10 @@ import argparse
 import subprocess
 
 from k8s_jobs import __version__
-from k8s_jobs.klib import combine_script_and_args, generate_templated_yaml
+from k8s_jobs.klib import combine_script_and_args, generate_templated_yaml, run_with_retries
 
 
+@run_with_retries(4, show_errors=False)
 def run_k8s_batch_job(args):
     combine_script_and_args(args)
     temp_yaml = generate_templated_yaml(args)

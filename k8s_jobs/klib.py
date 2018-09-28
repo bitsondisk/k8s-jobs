@@ -1,12 +1,14 @@
 import base64
 import json
 import os
+import sys
 import random
 import re
 import string
 import subprocess as sp
 import tempfile
 import pkgutil
+import time
 
 from semantic_version import Version
 import yaml
@@ -144,7 +146,7 @@ def combine_script_and_args(args):
 
 
 def replace_template(lines, key, value):
-    if value is None:
+    if value is None or value == []:
         # Remove line(s)
         return [l for l in lines if '$({key})'.format(key=key) not in l]
     else:
@@ -266,7 +268,7 @@ def generate_templated_yaml(args):
         if not args.image:
             raise RuntimeError('A pre-defined yaml file or docker image must be specified!')
 
-        data = pkgutil.get_data("k8s_jobs.klib", "default.yaml").decode('utf-8')
+        data = pkgutil.get_data('k8s_jobs.klib', 'default.yaml').decode('utf-8')
 
     data = convert_template_yaml(data, args)
 
@@ -346,3 +348,23 @@ def insert_or_append_path(obj, path, value):
             raise KeyError('Existing value is not a list for "{}" in {}'.format(path, update_obj))
     else:
         update_obj[key] = [value]
+
+
+def run_with_retries(n_tries, show_errors=True):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            err = None
+            for retry in range(n_tries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if show_errors:
+                        print('Caught exception and retrying: {}'.format(e), file=sys.stderr)
+                    err = e
+                    time.sleep(1 + 2 * retry)
+
+            raise err
+
+        return wrapper
+
+    return decorator

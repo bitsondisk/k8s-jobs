@@ -337,16 +337,16 @@ def test_generate_yaml_sections_missing():
 
 
 def test_replace_template():
-    lines = ["line1: example", "line2: $(TEST_REPLACE)", "line3: $(SOMETHING_ELSE)"]
+    lines = ['line1: example', 'line2: $(TEST_REPLACE)', 'line3: $(SOMETHING_ELSE)']
 
     lines_rep1 = klib.replace_template(lines, 'TEST_REPLACE', 'value')
-    assert lines_rep1 == ["line1: example", "line2: value", "line3: $(SOMETHING_ELSE)"]
+    assert lines_rep1 == ['line1: example', 'line2: value', 'line3: $(SOMETHING_ELSE)']
 
     lines_del1 = klib.replace_template(lines, 'SOMETHING_ELSE', None)
-    assert lines_del1 == ["line1: example", "line2: $(TEST_REPLACE)"]
+    assert lines_del1 == ['line1: example', 'line2: $(TEST_REPLACE)']
 
     lines_rep_del = klib.replace_template(lines_rep1, 'SOMETHING_ELSE', None)
-    assert lines_rep_del == ["line1: example", "line2: value"]
+    assert lines_rep_del == ['line1: example', 'line2: value']
 
 
 def test_random_string():
@@ -441,3 +441,35 @@ def test_set_append_path():
             'new-list': ['another']
         }
     }
+
+
+class MockFail(object):
+    n_tries = 0
+
+    def __init__(self, n_tries):
+        super(MockFail, self).__init__()
+        self.n_tries = n_tries
+
+    def run(self, return_value):
+        if self.n_tries > 0:
+            self.n_tries -= 1
+            raise RuntimeError('Mock Exception')
+
+        return return_value
+
+
+@klib.run_with_retries(2, show_errors=True)
+def retry_runner(obj, value):
+    return obj.run(value)
+
+
+def test_download_with_retries():
+    fail_1 = MockFail(1)
+    fail_2 = MockFail(2)
+
+    assert retry_runner(fail_1, True) is True
+    with pytest.raises(RuntimeError):
+        retry_runner(fail_2, True)
+
+    assert fail_1.n_tries == 0
+    assert fail_2.n_tries == 0
