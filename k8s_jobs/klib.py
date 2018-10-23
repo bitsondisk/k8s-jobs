@@ -116,6 +116,8 @@ def add_node_selectors(args, config_template):
 
 
 def verify_retry_limit_supported(num_retries):
+    """Due to a k8s bug: https://github.com/kubernetes/kubernetes/issues/62382,
+        only certain version of Kubernetes support a backoffLimit on jobs."""
     if int(num_retries) < 1:
         return
 
@@ -124,11 +126,15 @@ def verify_retry_limit_supported(num_retries):
     kubernetes_version = kubernetes_version_matcher.match(
         kubernetes_version_json['serverVersion']['gitVersion'],
     ).group('version')
+    min_k8s_version = '1.10.5'
 
-    if Version.coerce(kubernetes_version) < Version('1.11.0'):
+    if Version.coerce(kubernetes_version) < Version(min_k8s_version):
         raise RuntimeError('Your Kubernetes version is v{kubernetes_version}. '
-                           'Kubernetes versions prior to v1.11.0 will retry an indefinite amount of '
-                           'times with retries set to > 0'.format(kubernetes_version=kubernetes_version))
+                           'Kubernetes versions prior to v{min_k8s_version} will retry an indefinite amount of '
+                           'times with retries set to > 0'.format(
+                               kubernetes_version=kubernetes_version,
+                               min_k8s_version=min_k8s_version,
+                           ))
 
 
 def combine_script_and_args(args):
