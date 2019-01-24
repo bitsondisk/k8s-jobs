@@ -463,7 +463,7 @@ def retry_runner(obj, value):
     return obj.run(value)
 
 
-def test_download_with_retries():
+def test_retries():
     fail_1 = MockFail(1)
     fail_2 = MockFail(2)
 
